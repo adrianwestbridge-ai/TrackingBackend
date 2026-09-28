@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { RefreshCw, Plus } from 'lucide-react';
+import { RefreshCw, Plus, Globe } from 'lucide-react';
 
-export default function Header({ pageTitle, onRefresh, onAddManual }) {
+export default function Header({ pageTitle, onRefresh, onAddManual, websiteFilter, setWebsiteFilter, websiteOptions }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefreshClick = () => {
@@ -19,6 +19,39 @@ export default function Header({ pageTitle, onRefresh, onAddManual }) {
       <h2 className="page-title">{pageTitle}</h2>
 
       <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Global Website Filter - applies to every tab, not just this page.
+            "All Websites" is the super-admin view; picking one site narrows
+            every tab down to just that site's data. */}
+        {websiteOptions && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Globe size={16} color="#475569" />
+            <select
+              value={websiteFilter}
+              onChange={(e) => setWebsiteFilter(e.target.value)}
+              title="Filter every tab down to one website's data"
+              style={{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                backgroundColor: websiteFilter !== 'All' ? '#eff6ff' : '#ffffff',
+                borderColor: websiteFilter !== 'All' ? '#93c5fd' : '#cbd5e1',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                color: '#0f172a',
+                cursor: 'pointer',
+                outline: 'none',
+                maxWidth: '260px',
+              }}
+            >
+              {websiteOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Refresh Data Button */}
         <button
           className="btn-secondary"

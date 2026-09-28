@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PetCare Coverage - Free Quote</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Trebuchet MS', Verdana, sans-serif; }
+    body { background: #ecfdf5; color: #064e3b; min-height: 100vh; }
+    header { background: #0f766e; color: #fff; padding: 18px 24px; display: flex; align-items: center; gap: 10px; }
+    header h1 { font-size: 22px; font-weight: 800; }
+    .wrap { max-width: 460px; margin: 40px auto; padding: 0 20px; }
+    .card { background: #fff; border-radius: 22px; padding: 30px; box-shadow: 0 10px 30px rgba(15,118,110,0.18); }
+    .card h2 { color: #0f766e; margin-bottom: 6px; font-size: 22px; }
+    .card p { color: #115e59; font-size: 14px; margin-bottom: 20px; }
+    label { display: block; font-size: 13px; font-weight: 700; color: #065f46; margin-bottom: 5px; margin-top: 14px; }
+    input, select { width: 100%; padding: 11px 14px; border: 2px solid #99f6e4; border-radius: 999px; font-size: 14px; background: #f0fdfa; }
+    input:focus, select:focus { outline: none; border-color: #0f766e; }
+    button { width: 100%; margin-top: 24px; padding: 14px; background: #0f766e; color: #fff; border: none; border-radius: 999px; font-size: 16px; font-weight: 700; cursor: pointer; }
+    button:hover { background: #115e59; }
+    .thanks { display: none; text-align: center; padding: 20px 0; }
+    .thanks h3 { color: #16a34a; font-size: 22px; margin-bottom: 8px; }
+    .row { display: flex; gap: 12px; }
+    .row > div { flex: 1; }
+  </style>
+</head>
+<body>
+  <header>
+    <span style="font-size: 26px;">🐾</span>
+    <h1>PetCare Coverage</h1>
+  </header>
+
+  <div class="wrap">
+    <div class="card">
+      <div id="formView">
+        <h2>Protect Your Furry Friend</h2>
+        <p>Get a personalized pet insurance quote in minutes.</p>
+
+        <form id="quoteForm">
+          <div class="row">
+            <div>
+              <label>First Name</label>
+              <input type="text" name="firstName" required placeholder="Alex" />
+            </div>
+            <div>
+              <label>Last Name</label>
+              <input type="text" name="lastName" required placeholder="Rivera" />
+            </div>
+          </div>
+
+          <label>Email Address</label>
+          <input type="email" name="email" required placeholder="alex@example.com" />
+
+          <label>Phone Number</label>
+          <input type="tel" name="phone" required placeholder="(555) 987-6543" />
+
+          <label>Pet Type</label>
+          <select name="petType" required>
+            <option value="">Select pet type</option>
+            <option value="Dog">Dog</option>
+            <option value="Cat">Cat</option>
+            <option value="Other">Other</option>
+          </select>
+
+          <label>Pet's Age (years)</label>
+          <input type="number" name="petAge" required min="0" max="30" placeholder="3" />
+
+          <button type="submit">Get My Free Quote</button>
+        </form>
+      </div>
+
+      <div class="thanks" id="thanksView">
+        <h3>✅ Quote Request Sent!</h3>
+        <p>A PetCare specialist will reach out shortly.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('quoteForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      document.getElementById('formView').querySelector('form').style.display = 'none';
+      document.getElementById('thanksView').style.display = 'block';
+    });
+  </script>
+
+  <!-- Universal tracking pixel: auto-tracks this page visit and the form
+       submit above, sending both to the shared TrackingBackend. -->
+  <script src="http://localhost:5000/tracking-pixel.js" async></script>
+</body>
+</html>

@@ -3,51 +3,21 @@ import { Search, ExternalLink, Copy, Check, Eye, Globe, Filter, User, Phone, Mai
 import { exportSessionsToCSV, exportSessionsToJSON, printExecutiveAuditReport } from '../utils/exportCsv';
 import PaginationFooter from './PaginationFooter';
 
+// `sessions` here has already been narrowed to the selected website (if any)
+// by the global "Filter Website" dropdown in the Header - this view only
+// applies its own search term on top of that.
 export default function SessionsView({ sessions, onSelectSession }) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [websiteFilter, setWebsiteFilter] = useState('All');
   const [copiedId, setCopiedId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(8);
   const [exportFormat, setExportFormat] = useState('CSV');
 
-  // Extract unique website origins and compute entry counts per website
-  const websiteSummary = useMemo(() => {
-    const counts = {};
-    sessions.forEach((s) => {
-      let origin = s.landingPage || 'Unknown';
-      if (s.landingPage) {
-        try {
-          origin = new URL(s.landingPage).origin;
-        } catch (e) {
-          origin = s.landingPage;
-        }
-      }
-      counts[origin] = (counts[origin] || 0) + 1;
-    });
-
-    const uniqueSites = Object.keys(counts);
-    return {
-      uniqueCount: uniqueSites.length,
-      totalEntries: sessions.length,
-      options: [
-        {
-          value: 'All',
-          label: `All Websites (${uniqueSites.length} ${uniqueSites.length === 1 ? 'website' : 'websites'})`,
-        },
-        ...uniqueSites.map((site) => ({
-          value: site,
-          label: `${site} (${counts[site]} ${counts[site] === 1 ? 'entry' : 'entries'})`,
-        })),
-      ],
-    };
-  }, [sessions]);
-
-  // Filter sessions strictly by Search Term and Website Source
+  // Filter sessions by Search Term only (website filtering happens globally in App.jsx)
   const filteredSessions = useMemo(() => {
     return sessions.filter((session) => {
       const term = searchTerm.toLowerCase();
-      const matchesSearch =
+      return (
         session.id.toLowerCase().includes(term) ||
         (session.referenceId && session.referenceId.toLowerCase().includes(term)) ||
         (session.customerName && session.customerName.toLowerCase().includes(term)) ||
@@ -55,26 +25,15 @@ export default function SessionsView({ sessions, onSelectSession }) {
         (session.mobile && session.mobile.toLowerCase().includes(term)) ||
         (session.queryType && session.queryType.toLowerCase().includes(term)) ||
         session.landingPage.toLowerCase().includes(term) ||
-        session.ip.toLowerCase().includes(term);
-
-      let matchesWebsite = true;
-      if (websiteFilter !== 'All') {
-        try {
-          const parsed = new URL(session.landingPage);
-          matchesWebsite = parsed.origin === websiteFilter || session.landingPage.startsWith(websiteFilter);
-        } catch (e) {
-          matchesWebsite = session.landingPage.includes(websiteFilter);
-        }
-      }
-
-      return matchesSearch && matchesWebsite;
+        session.ip.toLowerCase().includes(term)
+      );
     });
-  }, [sessions, searchTerm, websiteFilter]);
+  }, [sessions, searchTerm]);
 
   // Reset page to 1 whenever filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, websiteFilter]);
+  }, [searchTerm]);
 
   // Pagination calculation
   const totalItems = filteredSessions.length;
@@ -113,33 +72,6 @@ export default function SessionsView({ sessions, onSelectSession }) {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-        </div>
-
-        {/* Dynamic Website Source Dropdown Filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Globe size={16} color="#475569" />
-          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Filter Website:</span>
-          <select
-            value={websiteFilter}
-            onChange={(e) => setWebsiteFilter(e.target.value)}
-            style={{
-              padding: '8px 12px',
-              borderRadius: '8px',
-              border: '1px solid #cbd5e1',
-              backgroundColor: '#ffffff',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              color: '#0f172a',
-              cursor: 'pointer',
-              outline: 'none',
-            }}
-          >
-            {websiteSummary.options.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
         </div>
 
         {/* Unified Format Selector & Export Button */}
@@ -316,7 +248,7 @@ export default function SessionsView({ sessions, onSelectSession }) {
             ) : (
               <tr>
                 <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                  No captured data found matching "<strong>{searchTerm}</strong>" on website "<strong>{websiteFilter}</strong>".
+                  No captured data found matching "<strong>{searchTerm}</strong>".
                 </td>
               </tr>
             )}

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HealthFirst Plans - Free Quote</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: Georgia, 'Times New Roman', serif; }
+    body { background: #f5f3ff; color: #2e1065; min-height: 100vh; }
+    header { background: #6d28d9; color: #fff; padding: 18px 24px; display: flex; align-items: center; gap: 10px; }
+    header h1 { font-size: 22px; font-weight: 800; font-family: Georgia, serif; }
+    .wrap { max-width: 480px; margin: 40px auto; padding: 0 20px; }
+    .card { background: #fff; border-radius: 8px; padding: 34px; box-shadow: 0 10px 30px rgba(109,40,217,0.15); border-left: 6px solid #6d28d9; }
+    .card h2 { color: #6d28d9; margin-bottom: 6px; font-size: 23px; }
+    .card p { color: #4c1d95; font-size: 14px; margin-bottom: 22px; }
+    label { display: block; font-size: 13px; font-weight: 700; color: #5b21b6; margin-bottom: 5px; margin-top: 14px; }
+    input, select { width: 100%; padding: 11px 14px; border: 1px solid #ddd6fe; border-radius: 4px; font-size: 14px; background: #faf5ff; font-family: Georgia, serif; }
+    input:focus, select:focus { outline: none; border-color: #6d28d9; }
+    button { width: 100%; margin-top: 24px; padding: 14px; background: #6d28d9; color: #fff; border: none; border-radius: 4px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: Georgia, serif; }
+    button:hover { background: #5b21b6; }
+    .thanks { display: none; text-align: center; padding: 20px 0; }
+    .thanks h3 { color: #16a34a; font-size: 22px; margin-bottom: 8px; }
+    .row { display: flex; gap: 12px; }
+    .row > div { flex: 1; }
+  </style>
+</head>
+<body>
+  <header>
+    <span style="font-size: 26px;">💜</span>
+    <h1>HealthFirst Plans</h1>
+  </header>
+
+  <div class="wrap">
+    <div class="card">
+      <div id="formView">
+        <h2>Find Your Health Plan</h2>
+        <p>Compare affordable health insurance plans in your area.</p>
+
+        <form id="quoteForm">
+          <div class="row">
+            <div>
+              <label>First Name</label>
+              <input type="text" name="firstName" required placeholder="Morgan" />
+            </div>
+            <div>
+              <label>Last Name</label>
+              <input type="text" name="lastName" required placeholder="Lee" />
+            </div>
+          </div>
+
+          <label>Email Address</label>
+          <input type="email" name="email" required placeholder="morgan@example.com" />
+
+          <label>Phone Number</label>
+          <input type="tel" name="phone" required placeholder="(555) 456-7890" />
+
+          <label>Date of Birth</label>
+          <input type="date" name="dob" required />
+
+          <label>Coverage Type</label>
+          <select name="coverageType" required>
+            <option value="">Select coverage type</option>
+            <option value="Individual">Individual</option>
+            <option value="Family">Family</option>
+            <option value="Senior/Medicare">Senior / Medicare</option>
+          </select>
+
+          <button type="submit">Compare Plans</button>
+        </form>
+      </div>
+
+      <div class="thanks" id="thanksView">
+        <h3>✅ Request Received!</h3>
+        <p>A HealthFirst advisor will contact you shortly.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('quoteForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      document.getElementById('formView').querySelector('form').style.display = 'none';
+      document.getElementById('thanksView').style.display = 'block';
+    });
+  </script>
+
+  <!-- Universal tracking pixel: auto-tracks this page visit and the form
+       submit above, sending both to the shared TrackingBackend. -->
+  <script src="http://localhost:5000/tracking-pixel.js" async></script>
+</body>
+</html>

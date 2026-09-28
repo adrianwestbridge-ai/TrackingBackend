@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HomeShield Insurance - Free Quote</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+    body { background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); color: #431407; min-height: 100vh; }
+    header { background: #c2410c; color: #fff; padding: 18px 24px; display: flex; align-items: center; gap: 10px; }
+    header h1 { font-size: 22px; font-weight: 800; }
+    .wrap { max-width: 480px; margin: 40px auto; padding: 0 20px; }
+    .card { background: #fff; border-radius: 16px; padding: 32px; box-shadow: 0 10px 30px rgba(194,65,12,0.15); border-top: 5px solid #c2410c; }
+    .card h2 { color: #c2410c; margin-bottom: 6px; font-size: 22px; }
+    .card p { color: #78350f; font-size: 14px; margin-bottom: 22px; }
+    label { display: block; font-size: 13px; font-weight: 700; color: #7c2d12; margin-bottom: 5px; margin-top: 14px; }
+    input, select { width: 100%; padding: 11px 14px; border: 2px solid #fed7aa; border-radius: 10px; font-size: 14px; background: #fffbeb; }
+    input:focus, select:focus { outline: none; border-color: #c2410c; }
+    button { width: 100%; margin-top: 24px; padding: 14px; background: #c2410c; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; }
+    button:hover { background: #9a3412; }
+    .thanks { display: none; text-align: center; padding: 20px 0; }
+    .thanks h3 { color: #16a34a; font-size: 22px; margin-bottom: 8px; }
+    .row { display: flex; gap: 12px; }
+    .row > div { flex: 1; }
+  </style>
+</head>
+<body>
+  <header>
+    <span style="font-size: 26px;">🏠</span>
+    <h1>HomeShield Insurance</h1>
+  </header>
+
+  <div class="wrap">
+    <div class="card">
+      <div id="formView">
+        <h2>Get Your Free Home Quote</h2>
+        <p>Protect your home in under 2 minutes. No obligation.</p>
+
+        <form id="quoteForm">
+          <div class="row">
+            <div>
+              <label>First Name</label>
+              <input type="text" name="firstName" required placeholder="Jane" />
+            </div>
+            <div>
+              <label>Last Name</label>
+              <input type="text" name="lastName" required placeholder="Cooper" />
+            </div>
+          </div>
+
+          <label>Email Address</label>
+          <input type="email" name="email" required placeholder="jane@example.com" />
+
+          <label>Phone Number</label>
+          <input type="tel" name="phone" required placeholder="(555) 123-4567" />
+
+          <label>Home Zip Code</label>
+          <input type="text" name="zipCode" required placeholder="10001" />
+
+          <label>Estimated Home Value</label>
+          <select name="homeValue" required>
+            <option value="">Select a range</option>
+            <option value="Under $200k">Under $200,000</option>
+            <option value="$200k-$400k">$200,000 - $400,000</option>
+            <option value="$400k-$600k">$400,000 - $600,000</option>
+            <option value="Over $600k">Over $600,000</option>
+          </select>
+
+          <button type="submit">Get My Free Quote</button>
+        </form>
+      </div>
+
+      <div class="thanks" id="thanksView">
+        <h3>✅ Quote Request Sent!</h3>
+        <p>A HomeShield agent will contact you shortly.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('quoteForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      document.getElementById('formView').querySelector('form').style.display = 'none';
+      document.getElementById('thanksView').style.display = 'block';
+      // tracking-pixel.js (loaded below) has its own submit listener that
+      // already captured this same event and sent the data to the backend.
+    });
+  </script>
+
+  <!-- Universal tracking pixel: auto-tracks this page visit and the form
+       submit above, sending both to the shared TrackingBackend. -->
+  <script src="http://localhost:5000/tracking-pixel.js" async></script>
+</body>
+</html>

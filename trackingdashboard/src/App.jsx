@@ -27,6 +27,17 @@ const PLATFORMS = [
 ];
 const pickRandomPlatform = () => PLATFORMS[Math.floor(Math.random() * PLATFORMS.length)];
 
+// Given a landingPage URL, return the value used to group/filter by website:
+// its origin (protocol + host) when parseable, or the raw string otherwise.
+const siteOriginOf = (landingPage) => {
+  if (!landingPage) return 'Unknown';
+  try {
+    return new URL(landingPage).origin;
+  } catch (e) {
+    return landingPage;
+  }
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('sessions');
   const [sessions, setSessions] = useState([]);
@@ -34,6 +45,35 @@ export default function App() {
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [notification, setNotification] = useState(null);
   const [isLiveConnected, setIsLiveConnected] = useState(false);
+
+  // Global website filter: applies to every tab at once, not just Sessions.
+  // "All Websites" is the super-admin view - everything, from every site.
+  // Picking one specific site narrows every tab down to just that site's data.
+  const [websiteFilter, setWebsiteFilter] = useState('All');
+
+  // Every known website, computed from the FULL unfiltered session list, so the
+  // dropdown always lists every site regardless of what's currently selected.
+  const websiteOptions = React.useMemo(() => {
+    const counts = {};
+    sessions.forEach((s) => {
+      const origin = siteOriginOf(s.landingPage);
+      counts[origin] = (counts[origin] || 0) + 1;
+    });
+    const uniqueSites = Object.keys(counts);
+    return [
+      { value: 'All', label: `All Websites (${uniqueSites.length} ${uniqueSites.length === 1 ? 'website' : 'websites'})` },
+      ...uniqueSites.map((site) => ({
+        value: site,
+        label: `${site} (${counts[site]} ${counts[site] === 1 ? 'entry' : 'entries'})`,
+      })),
+    ];
+  }, [sessions]);
+
+  // The data every tab actually renders - narrowed to the selected website.
+  const filteredSessions = React.useMemo(() => {
+    if (websiteFilter === 'All') return sessions;
+    return sessions.filter((s) => siteOriginOf(s.landingPage) === websiteFilter);
+  }, [sessions, websiteFilter]);
 
   // Fetch real-time sessions strictly from MongoDB / Backend API
   const fetchApiSessions = async () => {
@@ -140,6 +180,9 @@ export default function App() {
         <Header
           pageTitle={getPageTitle()}
           onRefresh={handleRefresh}
+          websiteFilter={websiteFilter}
+          setWebsiteFilter={setWebsiteFilter}
+          websiteOptions={websiteOptions}
         />
 
         {/* Notification Toast */}
@@ -183,38 +226,55 @@ export default function App() {
                 Open <strong>trackingwebsite</strong> and submit a form query. It will populate here automatically!
               </p>
             </div>
+          ) : filteredSessions.length === 0 && websiteFilter !== 'All' ? (
+            <div
+              style={{
+                background: '#ffffff',
+                borderRadius: '10px',
+                padding: '40px 24px',
+                textAlign: 'center',
+                border: '1px solid #e2e8f0',
+                color: '#64748b',
+              }}
+            >
+              <h3 style={{ color: '#0f172a', marginBottom: '8px' }}>No Data For This Website</h3>
+              <p style={{ fontSize: '0.9rem', marginBottom: '16px' }}>
+                <strong>{websiteFilter}</strong> hasn't sent any sessions yet. Switch back to{' '}
+                <strong>All Websites</strong> to see every site's data.
+              </p>
+            </div>
           ) : (
             <>
               {activeTab === 'sessions' && (
                 <SessionsView
-                  sessions={sessions}
+                  sessions={filteredSessions}
                   onSelectSession={(session) => setSelectedSession(session)}
                 />
               )}
 
               {activeTab === 'dashboard' && (
                 <DashboardView
-                  sessions={sessions}
+                  sessions={filteredSessions}
                   onSelectSession={(session) => setSelectedSession(session)}
                 />
               )}
 
               {activeTab === 'call-logs' && (
                 <CallLogsView
-                  sessions={sessions}
+                  sessions={filteredSessions}
                   onSelectSession={(session) => setSelectedSession(session)}
                 />
               )}
               {activeTab === 'leads' && (
                 <LeadsView
-                  sessions={sessions}
+                  sessions={filteredSessions}
                   onSelectSession={(session) => setSelectedSession(session)}
                 />
               )}
-              {activeTab === 'analytics' && <AnalyticsView sessions={sessions} />}
+              {activeTab === 'analytics' && <AnalyticsView sessions={filteredSessions} />}
               {activeTab === 'reports' && (
                 <ReportsView
-                  sessions={sessions}
+                  sessions={filteredSessions}
                   onSelectSession={(session) => setSelectedSession(session)}
                 />
               )}

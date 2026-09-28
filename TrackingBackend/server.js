@@ -14,22 +14,24 @@ const app = express();
 
 const path = require('path');
 
-// Which websites may call this API. Always includes the local dev ports; any
-// production domain (this site or a future one) is added via the ALLOWED_ORIGINS
-// env var - a comma-separated list - so onboarding a new website never needs a
-// code change or redeploy, just updating that one env var on the host.
-const DEFAULT_ORIGINS = ['http://localhost:5173', 'http://localhost:5174'];
+// Which websites may call this API. Any localhost/127.0.0.1 dev server, on any
+// port, is always allowed - that's a developer's own machine, so a new local
+// test site never needs a backend code change to work with `npm run dev`.
+// A real production domain (this site or a future one) is added via the
+// ALLOWED_ORIGINS env var - a comma-separated list - so onboarding a new
+// production website never needs a code change or redeploy either, just
+// updating that one env var on the host.
+const LOCAL_ORIGIN_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/;
 const EXTRA_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
   .map((o) => o.trim())
   .filter(Boolean);
-const ALLOWED_ORIGINS = [...DEFAULT_ORIGINS, ...EXTRA_ORIGINS];
 
 // Middleware
 app.use(cors({
   origin(origin, callback) {
     // No Origin header (server-to-server calls, curl, Postman) is always allowed.
-    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+    if (!origin || LOCAL_ORIGIN_PATTERN.test(origin) || EXTRA_ORIGINS.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error(`Not allowed by CORS: ${origin}`));
