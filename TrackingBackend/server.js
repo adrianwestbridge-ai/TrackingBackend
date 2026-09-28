@@ -8,13 +8,18 @@ const { ensureSuperAdmin } = require('./controllers/authController');
 // Load environment variables
 dotenv.config();
 
-// Connect to MongoDB
-connectDB();
-
-// Make sure there's always a super admin to log in with. See
-// controllers/authController.js for the default username/password
-// (SUPERADMIN_USERNAME / SUPERADMIN_PASSWORD env vars).
-ensureSuperAdmin().catch((err) => console.error('[Auth] Failed to seed super admin:', err.message));
+// Connect to MongoDB, THEN seed the super admin - not in parallel. connectDB()
+// never rejects (it catches its own errors so /health can still report status
+// if the DB is down), so this always runs, but only after the connection has
+// genuinely either succeeded or failed - never while it's still pending.
+// Getting this order wrong was a real bug: ensureSuperAdmin() checked
+// isDbConnected() before mongoose had finished connecting, saw "not
+// connected" every time, and silently seeded the super admin into the
+// in-memory store instead of MongoDB even when a real MONGODB_URI was set
+// and the connection succeeded moments later.
+connectDB().then(() => {
+  ensureSuperAdmin().catch((err) => console.error('[Auth] Failed to seed super admin:', err.message));
+});
 
 const app = express();
 
