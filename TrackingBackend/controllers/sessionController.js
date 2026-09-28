@@ -47,6 +47,44 @@ function resolveTrafficSource(existingSource, existingPlatform, req) {
   return PLATFORMS[Math.floor(Math.random() * PLATFORMS.length)];
 }
 
+// --- Role-based data scoping ------------------------------------------------
+// req.user is set by the `authenticate` middleware (see routes/sessionRoutes.js)
+// from a verified JWT - never from anything the client can freely set. A
+// superadmin (or an unauthenticated internal call with no req.user at all)
+// gets no restriction; an 'admin' only ever gets sessions whose landingPage
+// origin is in their own allowedOrigins, enforced right here at the query
+// level - the restricted data is never fetched, let alone sent to the browser.
+
+function originOf(landingPage) {
+  if (!landingPage) return null;
+  try {
+    return new URL(landingPage).origin;
+  } catch (e) {
+    return landingPage;
+  }
+}
+
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Mongo query fragment restricting `landingPage` to one of the user's allowed
+// origins, or `undefined` when the user isn't scoped (superadmin/no user).
+function scopeMongoQuery(user) {
+  if (!user || user.role === 'superadmin') return undefined;
+  const origins = user.allowedOrigins || [];
+  if (origins.length === 0) return { landingPage: { $in: [] } }; // matches nothing
+  return { $or: origins.map((o) => ({ landingPage: { $regex: `^${escapeRegex(o)}` } })) };
+}
+
+// In-memory equivalent of the same restriction.
+function isInScope(user, landingPage) {
+  if (!user || user.role === 'superadmin') return true;
+  const origins = user.allowedOrigins || [];
+  const origin = originOf(landingPage);
+  return origins.includes(origin);
+}
+
 // @desc    Create or update a tracking session
 // @route   POST /api/sessions
 // @access  Public
@@ -190,23 +228,28 @@ const saveSession = async (req, res, next) => {
 
 // @desc    Get all tracked sessions with pagination & filtering
 // @route   GET /api/sessions
-// @access  Public
+// @access  Private (dashboard) - results are scoped to req.user's allowedOrigins
 const getSessions = async (req, res, next) => {
   try {
     const { search, limit = 50, page = 1 } = req.query;
 
     if (isDbConnected()) {
       try {
-        const query = {};
+        const conditions = [];
         if (search) {
-          query.$or = [
-            { sessionId: { $regex: search, $options: 'i' } },
-            { mobile: { $regex: search, $options: 'i' } },
-            { ipAddress: { $regex: search, $options: 'i' } },
-            { landingPage: { $regex: search, $options: 'i' } },
-            { trafficSource: { $regex: search, $options: 'i' } },
-          ];
+          conditions.push({
+            $or: [
+              { sessionId: { $regex: search, $options: 'i' } },
+              { mobile: { $regex: search, $options: 'i' } },
+              { ipAddress: { $regex: search, $options: 'i' } },
+              { landingPage: { $regex: search, $options: 'i' } },
+              { trafficSource: { $regex: search, $options: 'i' } },
+            ],
+          });
         }
+        const scopeQuery = scopeMongoQuery(req.user);
+        if (scopeQuery) conditions.push(scopeQuery);
+        const query = conditions.length > 0 ? { $and: conditions } : {};
 
         const skip = (Number(page) - 1) * Number(limit);
         const sessions = await Session.find(query)
@@ -242,6 +285,7 @@ const getSessions = async (req, res, next) => {
           (s.trafficSource && s.trafficSource.toLowerCase().includes(q))
       );
     }
+    filtered = filtered.filter((s) => isInScope(req.user, s.landingPage));
 
     const total = filtered.length;
     const startIndex = (Number(page) - 1) * Number(limit);
@@ -262,7 +306,8 @@ const getSessions = async (req, res, next) => {
 
 // @desc    Get single session by ID or sessionId
 // @route   GET /api/sessions/:id
-// @access  Public
+// @access  Private (dashboard) - 404s if the session exists but is out of
+//          req.user's scope, same as if it didn't exist at all
 const getSessionById = async (req, res, next) => {
   try {
     const id = req.params.id;
@@ -274,6 +319,9 @@ const getSessionById = async (req, res, next) => {
           session = await Session.findOne({ sessionId: id });
         }
         if (session) {
+          if (!isInScope(req.user, session.landingPage)) {
+            return res.status(404).json({ success: false, message: 'Session not found' });
+          }
           return res.status(200).json({
             success: true,
             data: session,
@@ -285,7 +333,7 @@ const getSessionById = async (req, res, next) => {
     }
 
     const session = inMemorySessions.find((s) => s._id === id || s.sessionId === id);
-    if (!session) {
+    if (!session || !isInScope(req.user, session.landingPage)) {
       return res.status(404).json({
         success: false,
         message: 'Session not found',
@@ -361,19 +409,23 @@ const addSessionEvent = async (req, res, next) => {
 
 // @desc    Delete session by ID
 // @route   DELETE /api/sessions/:id
-// @access  Public
+// @access  Private (dashboard) - can't delete (or even detect) a session
+//          outside req.user's scope
 const deleteSession = async (req, res, next) => {
   try {
     const id = req.params.id;
 
     if (isDbConnected()) {
       try {
-        let session = await Session.findByIdAndDelete(id).catch(() => null);
+        let session = await Session.findById(id).catch(() => null);
         if (!session) {
-          session = await Session.findOneAndDelete({ sessionId: id });
+          session = await Session.findOne({ sessionId: id });
         }
-
         if (session) {
+          if (!isInScope(req.user, session.landingPage)) {
+            return res.status(404).json({ success: false, message: 'Session not found' });
+          }
+          await Session.findByIdAndDelete(session._id);
           return res.status(200).json({
             success: true,
             message: 'Session deleted successfully',
@@ -385,7 +437,7 @@ const deleteSession = async (req, res, next) => {
     }
 
     const index = inMemorySessions.findIndex((s) => s._id === id || s.sessionId === id);
-    if (index === -1) {
+    if (index === -1 || !isInScope(req.user, inMemorySessions[index].landingPage)) {
       return res.status(404).json({
         success: false,
         message: 'Session not found',

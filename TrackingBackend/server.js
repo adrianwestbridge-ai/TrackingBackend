@@ -3,12 +3,18 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
+const { ensureSuperAdmin } = require('./controllers/authController');
 
 // Load environment variables
 dotenv.config();
 
 // Connect to MongoDB
 connectDB();
+
+// Make sure there's always a super admin to log in with. See
+// controllers/authController.js for the default username/password
+// (SUPERADMIN_USERNAME / SUPERADMIN_PASSWORD env vars).
+ensureSuperAdmin().catch((err) => console.error('[Auth] Failed to seed super admin:', err.message));
 
 const app = express();
 
@@ -54,6 +60,7 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
+app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/credentials', require('./routes/credentialRoutes'));
 app.use('/api/sessions', require('./routes/sessionRoutes'));
 app.use('/api/uploads', require('./routes/uploadRoutes'));

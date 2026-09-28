@@ -10,6 +10,8 @@ import AnalyticsView from './components/AnalyticsView';
 import ReportsView from './components/ReportsView';
 import SessionModal from './components/SessionModal';
 import ManualEntryModal from './components/ManualEntryModal';
+import Login from './components/Login';
+import CreateAdminModal from './components/CreateAdminModal';
 
 // Set VITE_API_URL at build/deploy time (e.g. https://tracking-api.onrender.com/api).
 // Falls back to the local backend when not set, so `npm run dev` keeps working as-is.
@@ -38,6 +40,20 @@ const siteOriginOf = (landingPage) => {
   }
 };
 
+// Read whatever was saved from a previous login, if any. This just seeds
+// initial state for a nicer reload experience - the backend independently
+// re-validates the token (or rejects it) on every request either way.
+function loadStoredAuth() {
+  try {
+    const token = localStorage.getItem('auth_token');
+    const userRaw = localStorage.getItem('auth_user');
+    if (!token || !userRaw) return { token: null, user: null };
+    return { token, user: JSON.parse(userRaw) };
+  } catch (e) {
+    return { token: null, user: null };
+  }
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('sessions');
   const [sessions, setSessions] = useState([]);
@@ -46,19 +62,62 @@ export default function App() {
   const [notification, setNotification] = useState(null);
   const [isLiveConnected, setIsLiveConnected] = useState(false);
 
+  // --- Auth state --------------------------------------------------------
+  const [{ token: authToken, user: currentUser }, setAuth] = useState(loadStoredAuth);
+  const [isCreateAdminOpen, setIsCreateAdminOpen] = useState(false);
+  const [admins, setAdmins] = useState([]);
+
+  const isSuperAdmin = currentUser?.role === 'superadmin';
+
+  const handleLoginSuccess = (token, user) => {
+    localStorage.setItem('auth_token', token);
+    localStorage.setItem('auth_user', JSON.stringify(user));
+    setAuth({ token, user });
+    // A scoped admin starts on their own (single, or combined) website view,
+    // never on the superadmin's global "All Websites".
+    setWebsiteFilter(user.role === 'superadmin' ? 'All' : (user.allowedOrigins?.length > 1 ? 'AllMine' : user.allowedOrigins?.[0] || 'AllMine'));
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    setAuth({ token: null, user: null });
+    setSessions([]);
+    setAdmins([]);
+  };
+
+  const authHeaders = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+
   // Global website filter: applies to every tab at once, not just Sessions.
-  // "All Websites" is the super-admin view - everything, from every site.
-  // Picking one specific site narrows every tab down to just that site's data.
+  // For a super admin, "All Websites" means literally everything. For a
+  // scoped admin, the backend already only ever sends their allowed
+  // website(s) - "AllMine" just means "don't narrow further than that".
   const [websiteFilter, setWebsiteFilter] = useState('All');
 
   // Every known website, computed from the FULL unfiltered session list, so the
   // dropdown always lists every site regardless of what's currently selected.
+  // A scoped admin only ever gets their own allowedOrigins here - not because
+  // this list hides anything, but because the backend never sent them any
+  // other website's data to begin with.
   const websiteOptions = React.useMemo(() => {
     const counts = {};
     sessions.forEach((s) => {
       const origin = siteOriginOf(s.landingPage);
       counts[origin] = (counts[origin] || 0) + 1;
     });
+
+    if (!isSuperAdmin) {
+      const mine = currentUser?.allowedOrigins || [];
+      const options = mine.map((site) => ({
+        value: site,
+        label: `${site} (${counts[site] || 0} ${counts[site] === 1 ? 'entry' : 'entries'})`,
+      }));
+      if (mine.length > 1) {
+        return [{ value: 'AllMine', label: `All My Websites (${mine.length})` }, ...options];
+      }
+      return options;
+    }
+
     const uniqueSites = Object.keys(counts);
     return [
       { value: 'All', label: `All Websites (${uniqueSites.length} ${uniqueSites.length === 1 ? 'website' : 'websites'})` },
@@ -67,20 +126,29 @@ export default function App() {
         label: `${site} (${counts[site]} ${counts[site] === 1 ? 'entry' : 'entries'})`,
       })),
     ];
-  }, [sessions]);
+  }, [sessions, isSuperAdmin, currentUser]);
 
   // The data every tab actually renders - narrowed to the selected website.
+  // Note: for a scoped admin, `sessions` itself already only ever contains
+  // their allowed website(s) - this is a display convenience on top of data
+  // the backend has already restricted, not the security boundary itself.
   const filteredSessions = React.useMemo(() => {
-    if (websiteFilter === 'All') return sessions;
+    if (websiteFilter === 'All' || websiteFilter === 'AllMine') return sessions;
     return sessions.filter((s) => siteOriginOf(s.landingPage) === websiteFilter);
   }, [sessions, websiteFilter]);
 
   // Fetch real-time sessions strictly from MongoDB / Backend API
   const fetchApiSessions = async () => {
     try {
-      const res = await fetch(BACKEND_API);
+      const res = await fetch(BACKEND_API, { headers: authHeaders });
+      if (res.status === 401) {
+        // Token missing/expired/invalid - the backend is the one saying so,
+        // so log out rather than show stale or empty data as if it were real.
+        handleLogout();
+        return;
+      }
       const data = await res.json();
-      
+
       if (data.success && Array.isArray(data.data)) {
         setIsLiveConnected(true);
         const mappedBackendSessions = data.data.map((item) => {
@@ -134,12 +202,30 @@ export default function App() {
     }
   };
 
-  // Real-time polling: Auto refresh every 2 seconds
+  // Real-time polling: Auto refresh every 2 seconds - only once logged in,
+  // since every session-reading endpoint now requires a valid token.
   useEffect(() => {
+    if (!authToken) return;
     fetchApiSessions();
     const interval = setInterval(fetchApiSessions, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [authToken]);
+
+  // Admins list, for the Create Admin screen - super admin only.
+  const fetchAdmins = async () => {
+    if (!isSuperAdmin || !authToken) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/admins`, { headers: authHeaders });
+      const data = await res.json();
+      if (data.success) setAdmins(data.data);
+    } catch (err) {
+      // Non-critical - the Create Admin modal just shows an empty list.
+    }
+  };
+
+  useEffect(() => {
+    if (isCreateAdminOpen) fetchAdmins();
+  }, [isCreateAdminOpen]);
 
   const showNotification = (msg) => {
     setNotification(msg);
@@ -170,6 +256,14 @@ export default function App() {
     }
   };
 
+  // Not logged in (or the stored token was cleared by a 401) - show only the
+  // login screen. The backend independently rejects a missing/invalid/expired
+  // token on every request regardless of what's in localStorage, so this gate
+  // is a UX convenience, not the actual security boundary.
+  if (!authToken || !currentUser) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="app-container">
       {/* Sidebar Navigation */}
@@ -183,6 +277,9 @@ export default function App() {
           websiteFilter={websiteFilter}
           setWebsiteFilter={setWebsiteFilter}
           websiteOptions={websiteOptions}
+          currentUser={currentUser}
+          onOpenCreateAdmin={() => setIsCreateAdminOpen(true)}
+          onLogout={handleLogout}
         />
 
         {/* Notification Toast */}
@@ -226,7 +323,7 @@ export default function App() {
                 Open <strong>trackingwebsite</strong> and submit a form query. It will populate here automatically!
               </p>
             </div>
-          ) : filteredSessions.length === 0 && websiteFilter !== 'All' ? (
+          ) : filteredSessions.length === 0 && websiteFilter !== 'All' && websiteFilter !== 'AllMine' ? (
             <div
               style={{
                 background: '#ffffff',
@@ -239,8 +336,10 @@ export default function App() {
             >
               <h3 style={{ color: '#0f172a', marginBottom: '8px' }}>No Data For This Website</h3>
               <p style={{ fontSize: '0.9rem', marginBottom: '16px' }}>
-                <strong>{websiteFilter}</strong> hasn't sent any sessions yet. Switch back to{' '}
-                <strong>All Websites</strong> to see every site's data.
+                <strong>{websiteFilter}</strong> hasn't sent any sessions yet.{' '}
+                {isSuperAdmin
+                  ? <>Switch back to <strong>All Websites</strong> to see every site's data.</>
+                  : (websiteOptions.length > 1 && <>Switch to <strong>All My Websites</strong> to see your other site(s).</>)}
               </p>
             </div>
           ) : (
@@ -288,6 +387,19 @@ export default function App() {
         <SessionModal
           session={selectedSession}
           onClose={() => setSelectedSession(null)}
+        />
+      )}
+
+      {/* Create Scoped Admin - super admin only (Header hides the menu item otherwise) */}
+      {isSuperAdmin && (
+        <CreateAdminModal
+          isOpen={isCreateAdminOpen}
+          onClose={() => setIsCreateAdminOpen(false)}
+          authToken={authToken}
+          knownWebsites={websiteOptions.filter((o) => o.value !== 'All').map((o) => o.value)}
+          existingAdmins={admins}
+          onAdminCreated={(admin) => setAdmins((prev) => [...prev, admin])}
+          onAdminDeleted={(id) => setAdmins((prev) => prev.filter((a) => a.id !== id))}
         />
       )}
     </div>
