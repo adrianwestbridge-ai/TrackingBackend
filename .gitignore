@@ -1,0 +1,6 @@
+# Root-level ignores. Each app folder (TrackingBackend, trackingwebsite,
+# trackingdashboard) also has its own .gitignore for node_modules/dist/.env.
+
+# Reference documents generated during development - not part of the app.
+/Production_Deployment_and_Multi_Website_Data_Collection_Guide.pdf
+/Production_Deployment_and_Multi_Website_Data_Collection_Guide_v2.pdf
