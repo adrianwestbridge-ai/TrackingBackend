@@ -126,16 +126,27 @@
     const formData = new FormData(form);
     const data = {};
     let detectedMobile = '';
+    let detectedFirstName = '';
+    let detectedLastName = '';
+    let detectedFullName = '';
+    let detectedEmail = '';
 
     formData.forEach((value, key) => {
       data[key] = value;
-      if (/phone|mobile|tel|contact/i.test(key) && value) {
-        detectedMobile = value;
-      }
+      if (!value) return;
+      if (/phone|mobile|tel|contact/i.test(key)) detectedMobile = value;
+      if (/^first.?name$/i.test(key)) detectedFirstName = value;
+      else if (/^last.?name$/i.test(key)) detectedLastName = value;
+      else if (/^(full.?name|name|customer.?name)$/i.test(key)) detectedFullName = value;
+      if (/email/i.test(key)) detectedEmail = value;
     });
+
+    const customerName = detectedFullName || [detectedFirstName, detectedLastName].filter(Boolean).join(' ') || null;
 
     sendTelemetry('FORM_SUBMITTED', {
       mobile: detectedMobile || data.phone || data.mobile || null,
+      customerName,
+      customerEmail: detectedEmail || null,
       formData: data,
     });
   });
