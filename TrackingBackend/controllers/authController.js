@@ -32,6 +32,7 @@ function publicAdmin(admin) {
     username: admin.username,
     role: admin.role,
     allowedOrigins: admin.allowedOrigins || [],
+    brandName: admin.brandName || '',
     createdAt: admin.createdAt,
   };
 }
@@ -114,7 +115,7 @@ const login = async (req, res, next) => {
 // @access  Super admin only
 const createAdmin = async (req, res, next) => {
   try {
-    const { username, password, allowedOrigins } = req.body;
+    const { username, password, allowedOrigins, brandName } = req.body;
     if (!username || !password) {
       return res.status(400).json({ success: false, message: 'Username and password are required' });
     }
@@ -123,6 +124,7 @@ const createAdmin = async (req, res, next) => {
     }
     const uname = username.toLowerCase().trim();
     const passwordHash = await bcrypt.hash(password, 10);
+    const trimmedBrandName = (brandName || '').trim();
 
     if (isDbConnected()) {
       try {
@@ -130,7 +132,7 @@ const createAdmin = async (req, res, next) => {
         if (exists) {
           return res.status(409).json({ success: false, message: 'That username is already taken' });
         }
-        const created = await Admin.create({ username: uname, passwordHash, role: 'admin', allowedOrigins });
+        const created = await Admin.create({ username: uname, passwordHash, role: 'admin', allowedOrigins, brandName: trimmedBrandName });
         return res.status(201).json({ success: true, data: publicAdmin(created) });
       } catch (err) {
         console.warn('[Auth] MongoDB create failed, falling back to in-memory:', err.message);
@@ -146,6 +148,7 @@ const createAdmin = async (req, res, next) => {
       passwordHash,
       role: 'admin',
       allowedOrigins,
+      brandName: trimmedBrandName,
       createdAt: new Date(),
     };
     inMemoryAdmins.push(created);

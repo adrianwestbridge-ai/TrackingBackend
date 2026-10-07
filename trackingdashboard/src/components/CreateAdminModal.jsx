@@ -11,6 +11,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 export default function CreateAdminModal({ isOpen, onClose, authToken, knownWebsites, existingAdmins, onAdminCreated, onAdminDeleted }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [brandName, setBrandName] = useState('');
   const [selectedOrigins, setSelectedOrigins] = useState([]);
   const [customOrigin, setCustomOrigin] = useState('');
   const [error, setError] = useState('');
@@ -36,6 +37,7 @@ export default function CreateAdminModal({ isOpen, onClose, authToken, knownWebs
   const resetForm = () => {
     setUsername('');
     setPassword('');
+    setBrandName('');
     setSelectedOrigins([]);
     setCustomOrigin('');
     setError('');
@@ -56,7 +58,7 @@ export default function CreateAdminModal({ isOpen, onClose, authToken, knownWebs
       const res = await fetch(`${API_BASE_URL}/auth/admins`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-        body: JSON.stringify({ username, password, allowedOrigins: selectedOrigins }),
+        body: JSON.stringify({ username, password, allowedOrigins: selectedOrigins, brandName }),
       });
       const data = await res.json();
       if (!data.success) {
@@ -147,6 +149,22 @@ export default function CreateAdminModal({ isOpen, onClose, authToken, knownWebs
                 placeholder="At least 6 characters"
                 style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
               />
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                White-label Brand Name (optional)
+              </label>
+              <input
+                type="text"
+                value={brandName}
+                onChange={(e) => setBrandName(e.target.value)}
+                placeholder="e.g. Zing Leads"
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+              />
+              <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                Shown instead of "Track Inbound" in this admin's own sidebar and login screen. Leave empty to keep the default.
+              </span>
             </div>
 
             <div>

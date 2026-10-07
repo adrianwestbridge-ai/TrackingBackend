@@ -267,7 +267,7 @@ export default function App() {
   return (
     <div className="app-container">
       {/* Sidebar Navigation */}
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} brandName={currentUser?.brandName} />
 
       {/* Main Content Workspace */}
       <div className="main-content">
@@ -362,6 +362,7 @@ export default function App() {
                 <CallLogsView
                   sessions={filteredSessions}
                   onSelectSession={(session) => setSelectedSession(session)}
+                  isSuperAdmin={isSuperAdmin}
                 />
               )}
               {activeTab === 'leads' && (

@@ -132,7 +132,7 @@ export default function ReportsView({ sessions = [], onSelectSession }) {
                 <th>Reference #</th>
                 <th>Customer Name</th>
                 <th>Contact Email & Phone</th>
-                <th>Query Category</th>
+                <th>Quotation Source</th>
                 <th>Traffic Source</th>
                 <th>Client IP</th>
                 <th>Timestamp</th>
@@ -159,8 +159,8 @@ export default function ReportsView({ sessions = [], onSelectSession }) {
                       <div style={{ fontSize: '0.78rem', color: '#64748b', fontFamily: 'monospace' }}>{s.mobile}</div>
                     </td>
                     <td style={{ fontSize: '0.85rem', fontWeight: 500 }}>
-                      <span style={{ backgroundColor: '#f1f5f9', color: '#334155', padding: '2px 8px', borderRadius: '4px' }}>
-                        {s.queryType}
+                      <span style={{ backgroundColor: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '4px' }}>
+                        Click to Call
                       </span>
                     </td>
                     <td>

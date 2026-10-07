@@ -42,7 +42,7 @@ export default function Login({ onLoginSuccess }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)',
+        background: 'linear-gradient(135deg, #0d2b1f 0%, #15803d 100%)',
         padding: '20px',
       }}
     >
@@ -57,24 +57,24 @@ export default function Login({ onLoginSuccess }) {
         }}
       >
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div
+          <img
+            src="/logo.png"
+            alt="Track Inbound"
             style={{
-              width: '56px',
-              height: '56px',
+              width: '64px',
+              height: '64px',
               borderRadius: '14px',
-              background: '#2563eb',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              objectFit: 'cover',
               margin: '0 auto 14px',
             }}
-          >
-            <Lock size={26} color="#ffffff" />
-          </div>
-          <h1 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-            Inbound Tracking System
+          />
+          <h1 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '0.02em' }}>
+            TRACK INBOUND
           </h1>
-          <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '6px' }}>
+          <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Inbound Tracking System
+          </p>
+          <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '10px' }}>
             Sign in to view your dashboard
           </p>
         </div>

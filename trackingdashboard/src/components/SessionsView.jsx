@@ -111,7 +111,7 @@ export default function SessionsView({ sessions, onSelectSession }) {
               <th>Website Source</th>
               <th>Customer Contact</th>
               <th>Mobile</th>
-              <th>Query Category</th>
+              <th>Quotation Source</th>
               <th>Device & IP</th>
               <th>Captured Time</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
@@ -172,21 +172,21 @@ export default function SessionsView({ sessions, onSelectSession }) {
                     </span>
                   </td>
 
-                  {/* Query Category */}
+                  {/* Quotation Source */}
                   <td>
                     <span
                       style={{
                         display: 'inline-block',
                         padding: '4px 10px',
                         borderRadius: '6px',
-                        backgroundColor: '#f1f5f9',
-                        color: '#0f172a',
+                        backgroundColor: '#dcfce7',
+                        color: '#166534',
                         fontSize: '0.78rem',
                         fontWeight: 600,
-                        border: '1px solid #e2e8f0',
+                        border: '1px solid #bbf7d0',
                       }}
                     >
-                      {session.queryType}
+                      Click to Call
                     </span>
                   </td>
 

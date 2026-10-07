@@ -183,7 +183,7 @@ export default function DashboardView({ sessions = [], onSelectSession }) {
             ${totalAdSpend.toFixed(2)}
           </div>
           <div className="metric-trend trend-up">
-            <TrendingUp size={14} /> Calculated from {sessions.length} Form Submissions
+            <TrendingUp size={14} /> Calculated from {sessions.length} Form Conversions
           </div>
         </div>
 
@@ -198,7 +198,7 @@ export default function DashboardView({ sessions = [], onSelectSession }) {
             ${googleSpend.toFixed(2)}
           </div>
           <div className="metric-trend trend-up">
-            <span>{leadsByChannel.Google || 0} Submissions @ ${cplRates.Google}/lead</span>
+            <span>{leadsByChannel.Google || 0} Conversions @ ${cplRates.Google}/lead</span>
           </div>
         </div>
 
@@ -213,7 +213,7 @@ export default function DashboardView({ sessions = [], onSelectSession }) {
             ${facebookSpend.toFixed(2)}
           </div>
           <div className="metric-trend trend-up">
-            <span>{leadsByChannel.Facebook || 0} Submissions @ ${cplRates.Facebook}/lead</span>
+            <span>{leadsByChannel.Facebook || 0} Conversions @ ${cplRates.Facebook}/lead</span>
           </div>
         </div>
 

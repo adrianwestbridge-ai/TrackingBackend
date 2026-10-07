@@ -1,24 +1,24 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
-  --bg-sidebar: #0b132b;
-  --bg-sidebar-hover: #1c2541;
-  --bg-sidebar-active: #2563eb;
+  --bg-sidebar: #0d2b1f;
+  --bg-sidebar-hover: #154028;
+  --bg-sidebar-active: #15803d;
   --text-sidebar: #94a3b8;
   --text-sidebar-active: #ffffff;
-  
+
   --bg-workspace: #f8fafc;
   --bg-card: #ffffff;
   --border-color: #e2e8f0;
-  
+
   --text-main: #0f172a;
   --text-muted: #64748b;
-  
+
   --user-id-green: #16a34a;
   --user-id-green-hover: #15803d;
-  
-  --primary-blue: #2563eb;
-  --primary-blue-hover: #1d4ed8;
+
+  --primary-blue: #15803d;
+  --primary-blue-hover: #166534;
   
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);

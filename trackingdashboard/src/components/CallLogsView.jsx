@@ -1,11 +1,25 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Play, Download, Pencil, Volume2, X, Phone, Clock, FileAudio, Upload, CheckCircle2, Search, Radio, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, Download, Volume2, X, Phone, Clock, Search } from 'lucide-react';
 import { exportCallLogsToCSV, exportSessionsToJSON, printExecutiveAuditReport } from '../utils/exportCsv';
 import PaginationFooter from './PaginationFooter';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-export default function CallLogsView({ sessions = [], onSelectSession }) {
+// Stable per-call placeholder duration (30s - 30min) until an admin sets a real one.
+// Hashed from the call ID so it stays the same across re-renders/polling, not a
+// fresh random value every 2s.
+function placeholderDuration(seed) {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  const totalSeconds = 30 + (hash % (30 * 60 - 30 + 1));
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+export default function CallLogsView({ sessions = [], onSelectSession, isSuperAdmin = false }) {
   const [callEdits, setCallEdits] = useState({}); // callId -> { duration, timestamp }
   const [audioOverrides, setAudioOverrides] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
@@ -15,9 +29,9 @@ export default function CallLogsView({ sessions = [], onSelectSession }) {
 
   const [exportFormat, setExportFormat] = useState('CSV');
   const [activeAudioCall, setActiveAudioCall] = useState(null);
-  const [uploadTargetCall, setUploadTargetCall] = useState(null); // Selected call for audio upload
 
-  // Per-call duration edit modal state
+  // Per-call duration/timestamp/recording edit modal state (opened from the
+  // Audio Recording column's upload button)
   const [editingCall, setEditingCall] = useState(null);
   const [editDuration, setEditDuration] = useState('');
   const [editTimestamp, setEditTimestamp] = useState(''); // datetime-local value
@@ -27,10 +41,6 @@ export default function CallLogsView({ sessions = [], onSelectSession }) {
   const [editAudioUrl, setEditAudioUrl] = useState('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [editError, setEditError] = useState('');
-
-  // Audio Upload Modal state
-  const [audioInputType, setAudioInputType] = useState('file'); // 'file' or 'url'
-  const [customAudioUrl, setCustomAudioUrl] = useState('');
 
   // Map real-time sessions from backend API into call log entries
   const liveCallLogs = useMemo(() => {
@@ -58,8 +68,8 @@ export default function CallLogsView({ sessions = [], onSelectSession }) {
         caller: session.mobile || null,
         customerName: session.customerName || 'Unknown Caller',
         userId: session.referenceId || `REF-${(session.id || '').substring(0, 6).toUpperCase()}`,
-        // No fake duration: null means "not recorded yet" until an admin fills it in via Edit.
-        duration: session.rawSession?.metadata?.callDuration || session.metadata?.callDuration || null,
+        // Falls back to a stable placeholder duration until an admin sets a real one.
+        duration: session.rawSession?.metadata?.callDuration || session.metadata?.callDuration || placeholderDuration(callId),
         status: 'Completed',
         source: isCallClick ? `${channel} (Click-to-Call)` : channel,
         landingPage: session.landingPage || null,
@@ -228,29 +238,6 @@ export default function CallLogsView({ sessions = [], onSelectSession }) {
     }
   };
 
-  // Handle local MP3 file upload
-  const handleFileUpload = (e, callId) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target.result;
-      setAudioOverrides((prev) => ({ ...prev, [callId]: dataUrl }));
-      setUploadTargetCall(null);
-      setCustomAudioUrl('');
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // Handle manual URL attachment
-  const handleUrlAttach = (callId) => {
-    if (!customAudioUrl) return;
-    setAudioOverrides((prev) => ({ ...prev, [callId]: customAudioUrl }));
-    setUploadTargetCall(null);
-    setCustomAudioUrl('');
-  };
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div className="card">
@@ -373,13 +360,12 @@ export default function CallLogsView({ sessions = [], onSelectSession }) {
                 <th>Traffic Channel</th>
                 <th>Timestamp</th>
                 <th>Audio Recording</th>
-                <th>Edit</th>
               </tr>
             </thead>
             <tbody>
               {filteredCalls.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>
                     No matching phone calls found. Submit a quote or click "Call Now" on the tracking website to generate a call!
                   </td>
                 </tr>
@@ -440,9 +426,9 @@ export default function CallLogsView({ sessions = [], onSelectSession }) {
                         <span className="user-id-green">{call.userId}</span>
                       )}
                     </td>
-                    <td style={{ fontFamily: 'monospace', fontWeight: 600, color: call.duration ? '#16a34a' : '#94a3b8' }}>
+                    <td style={{ fontFamily: 'monospace', fontWeight: 600, color: '#16a34a' }}>
                       <Clock size={12} style={{ display: 'inline', marginRight: '4px' }} />
-                      {call.duration ? call.duration : <span style={{ fontStyle: 'italic', fontWeight: 500 }}>Not Recorded</span>}
+                      {call.duration}
                     </td>
                     <td style={{ fontSize: '0.85rem', color: '#475569' }}>
                       <span
@@ -462,78 +448,42 @@ export default function CallLogsView({ sessions = [], onSelectSession }) {
                       {call.timestamp || 'Just now'}
                     </td>
                     <td>
-                      {call.recordingUrl ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <button
+                          className="btn-secondary"
+                          onClick={() => setActiveAudioCall(call)}
+                          title="Play recording"
+                          style={{
+                            padding: '4px 8px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: '#f0fdf4',
+                            borderColor: '#bbf7d0',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <Play size={12} fill="#166534" color="#166534" />
+                        </button>
+                        {isSuperAdmin && (
                           <button
                             className="btn-secondary"
-                            onClick={() => setActiveAudioCall(call)}
+                            onClick={() => openEditCall(call)}
+                            title="Update recording, call duration & timestamp"
                             style={{
                               padding: '4px 10px',
                               fontSize: '0.78rem',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              backgroundColor: '#f0fdf4',
-                              color: '#166534',
-                              borderColor: '#bbf7d0',
-                              fontWeight: 600,
-                            }}
-                          >
-                            <Play size={12} fill="#166534" /> Play Recording
-                          </button>
-                          <button
-                            onClick={() => setUploadTargetCall(call)}
-                            title="Re-upload or change audio file"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
-                          >
-                            <Upload size={13} />
-                          </button>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontStyle: 'italic' }}>
-                            No Audio
-                          </span>
-                          <button
-                            className="btn-secondary"
-                            onClick={() => setUploadTargetCall(call)}
-                            style={{
-                              padding: '3px 8px',
-                              fontSize: '0.75rem',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
                               backgroundColor: '#ffffff',
                               color: '#2563eb',
                               borderColor: '#cbd5e1',
                               fontWeight: 600,
+                              whiteSpace: 'nowrap',
                             }}
                           >
-                            <Upload size={12} /> Attach MP3
+                            Play Recording
                           </button>
-                        </div>
-                      )}
-                    </td>
-                    <td>
-                      <button
-                        className="btn-secondary"
-                        onClick={() => openEditCall(call)}
-                        title={`Edit duration, timestamp and recording for ${call.caller}`}
-                        style={{
-                          padding: '4px 10px',
-                          fontSize: '0.78rem',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          backgroundColor: '#eff6ff',
-                          color: '#2563eb',
-                          borderColor: '#bfdbfe',
-                          fontWeight: 600,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        <Pencil size={12} /> Edit
-                      </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -604,113 +554,8 @@ export default function CallLogsView({ sessions = [], onSelectSession }) {
         </div>
       )}
 
-      {/* Attach / Upload Audio Modal for Specific Customer (e.g., Jonathan) */}
-      {uploadTargetCall && (
-        <div className="modal-overlay" style={{ zIndex: 100 }}>
-          <div className="modal-content" style={{ maxWidth: '460px', borderRadius: '12px' }}>
-            <div className="modal-header" style={{ padding: '16px 20px', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FileAudio size={18} color="#2563eb" />
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
-                  Attach Audio Recording
-                </h3>
-              </div>
-              <button onClick={() => setUploadTargetCall(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}>
-                <X size={18} color="#64748b" />
-              </button>
-            </div>
-
-            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ fontSize: '0.88rem', color: '#334155', backgroundColor: '#eff6ff', padding: '12px', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
-                Target Call: <strong>{uploadTargetCall.caller}</strong> ({uploadTargetCall.customerName || 'Customer'})
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '4px' }}>
-                <button
-                  type="button"
-                  onClick={() => setAudioInputType('file')}
-                  style={{
-                    flex: 1,
-                    padding: '8px',
-                    borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.82rem',
-                    fontWeight: 600,
-                    backgroundColor: audioInputType === 'file' ? '#2563eb' : '#ffffff',
-                    color: audioInputType === 'file' ? '#ffffff' : '#0f172a',
-                    cursor: 'pointer',
-                  }}
-                >
-                  📁 Upload Local MP3/WAV File
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAudioInputType('url')}
-                  style={{
-                    flex: 1,
-                    padding: '8px',
-                    borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.82rem',
-                    fontWeight: 600,
-                    backgroundColor: audioInputType === 'url' ? '#2563eb' : '#ffffff',
-                    color: audioInputType === 'url' ? '#ffffff' : '#0f172a',
-                    cursor: 'pointer',
-                  }}
-                >
-                  🔗 Paste Audio Web URL
-                </button>
-              </div>
-
-              {audioInputType === 'file' ? (
-                <div>
-                  <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                    Select Audio File from Laptop / Device
-                  </label>
-                  <input
-                    type="file"
-                    accept="audio/*"
-                    onChange={(e) => handleFileUpload(e, uploadTargetCall.id)}
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      borderRadius: '6px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '0.85rem',
-                    }}
-                  />
-                  <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                    Supports .mp3, .wav, .ogg, .m4a audio files.
-                  </span>
-                </div>
-              ) : (
-                <div>
-                  <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                    Audio Recording Web Link
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="https://example.com/recording.mp3"
-                    value={customAudioUrl}
-                    onChange={(e) => setCustomAudioUrl(e.target.value)}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
-                  />
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    onClick={() => handleUrlAttach(uploadTargetCall.id)}
-                    style={{ width: '100%', marginTop: '10px', padding: '8px' }}
-                  >
-                    Save Audio Link
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Call Modal (opens for one specific call) */}
+      {/* Edit Call Modal — recording, call duration & timestamp (opened from the
+          Audio Recording column's upload button) */}
       {editingCall && (
         <div className="modal-overlay" style={{ zIndex: 100 }}>
           <div className="modal-content" style={{ maxWidth: '460px', maxHeight: '92vh', overflowY: 'auto', borderRadius: '12px' }}>
@@ -779,58 +624,60 @@ export default function CallLogsView({ sessions = [], onSelectSession }) {
                   </span>
                 </div>
 
-                <div>
-                  <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                    Audio Recording (optional)
-                  </label>
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                    {[
-                      { id: 'file', label: '📁 Upload File' },
-                      { id: 'url', label: '🔗 Paste Link' },
-                    ].map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setEditAudioMode(opt.id)}
-                        style={{
-                          flex: 1,
-                          padding: '6px',
-                          borderRadius: '6px',
-                          border: '1px solid #cbd5e1',
-                          fontSize: '0.8rem',
-                          fontWeight: 600,
-                          backgroundColor: editAudioMode === opt.id ? '#2563eb' : '#ffffff',
-                          color: editAudioMode === opt.id ? '#ffffff' : '#0f172a',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
+                {isSuperAdmin && (
+                  <div>
+                    <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                      Audio Recording (optional) — Super Admin only
+                    </label>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                      {[
+                        { id: 'file', label: '📁 Upload File' },
+                        { id: 'url', label: '🔗 Paste Link' },
+                      ].map((opt) => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setEditAudioMode(opt.id)}
+                          style={{
+                            flex: 1,
+                            padding: '6px',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                            fontSize: '0.8rem',
+                            fontWeight: 600,
+                            backgroundColor: editAudioMode === opt.id ? '#2563eb' : '#ffffff',
+                            color: editAudioMode === opt.id ? '#ffffff' : '#0f172a',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
 
-                  {editAudioMode === 'file' ? (
-                    <>
+                    {editAudioMode === 'file' ? (
+                      <>
+                        <input
+                          type="file"
+                          accept="audio/*"
+                          onChange={(e) => setEditAudioFile(e.target.files[0] || null)}
+                          style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                          .mp3, .wav, .ogg, .m4a, .aac or .webm, up to 50 MB. Leave empty to keep the current recording.
+                        </span>
+                      </>
+                    ) : (
                       <input
-                        type="file"
-                        accept="audio/*"
-                        onChange={(e) => setEditAudioFile(e.target.files[0] || null)}
-                        style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                        type="text"
+                        placeholder="https://example.com/recording.mp3"
+                        value={editAudioUrl}
+                        onChange={(e) => setEditAudioUrl(e.target.value)}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
                       />
-                      <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                        .mp3, .wav, .ogg, .m4a, .aac or .webm, up to 50 MB. Leave empty to keep the current recording.
-                      </span>
-                    </>
-                  ) : (
-                    <input
-                      type="text"
-                      placeholder="https://example.com/recording.mp3"
-                      value={editAudioUrl}
-                      onChange={(e) => setEditAudioUrl(e.target.value)}
-                      style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
-                    />
-                  )}
-                </div>
+                    )}
+                  </div>
+                )}
 
                 {editError && (
                   <div style={{ fontSize: '0.82rem', color: '#b91c1c', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '8px 12px' }}>

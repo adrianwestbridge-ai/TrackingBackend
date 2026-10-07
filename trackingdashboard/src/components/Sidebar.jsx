@@ -6,7 +6,6 @@ import {
   PhoneCall,
   Users,
   BarChart3,
-  Activity,
   ShieldCheck
 } from 'lucide-react';
 
@@ -19,13 +18,18 @@ const navItems = [
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
 ];
 
-export default function Sidebar({ activeTab, setActiveTab }) {
+export default function Sidebar({ activeTab, setActiveTab, brandName }) {
+  const displayName = (brandName || '').trim() || 'TRACK INBOUND';
+
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
         <h1 className="sidebar-title">
-          <Activity className="logo-icon" />
-          <span>INBOUND TRACKING SYSTEM</span>
+          <img src="/logo.png" alt={displayName} className="logo-icon" />
+          <span className="sidebar-title-text">
+            <span className="brand-name">{displayName.toUpperCase()}</span>
+            <span className="brand-subtitle">Inbound Tracking System</span>
+          </span>
         </h1>
       </div>
 

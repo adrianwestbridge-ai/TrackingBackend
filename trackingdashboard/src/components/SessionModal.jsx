@@ -1,16 +1,8 @@
-import React, { useState } from 'react';
-import { X, Clock, MapPin, Monitor, Globe, Tag, User, Mail, Phone, MessageSquare, Copy, Check } from 'lucide-react';
+import React from 'react';
+import { X, Clock, MapPin, Monitor, Globe, Tag, User, Mail, Phone, MessageSquare } from 'lucide-react';
 
 export default function SessionModal({ session, onClose }) {
-  const [copied, setCopied] = useState(false);
-
   if (!session) return null;
-
-  const handleCopyPayload = () => {
-    navigator.clipboard.writeText(JSON.stringify(session.rawSession || session, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -72,24 +64,12 @@ export default function SessionModal({ session, onClose }) {
               </div>
 
               <div>
-                <span style={{ fontSize: '0.78rem', color: '#64748b', display: 'block', fontWeight: 500 }}>Query Category</span>
-                <span style={{ display: 'inline-block', backgroundColor: '#f1f5f9', color: '#0f172a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, marginTop: '2px' }}>
-                  {session.queryType}
+                <span style={{ fontSize: '0.78rem', color: '#64748b', display: 'block', fontWeight: 500 }}>Quotation Source</span>
+                <span style={{ display: 'inline-block', backgroundColor: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, marginTop: '2px' }}>
+                  Click to Call
                 </span>
               </div>
             </div>
-
-            {/* Submitted Message Body */}
-            {session.feedbackMessage && (
-              <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #f1f5f9' }}>
-                <span style={{ fontSize: '0.78rem', color: '#64748b', display: 'block', fontWeight: 500, marginBottom: '4px' }}>
-                  Message Content / Feedback Body:
-                </span>
-                <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '12px 14px', fontSize: '0.9rem', color: '#334155', fontStyle: 'italic', lineHeight: 1.5 }}>
-                  "{session.feedbackMessage}"
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Section 2: Website & Device Telemetry Grid */}
@@ -149,12 +129,7 @@ export default function SessionModal({ session, onClose }) {
         </div>
 
         {/* Modal Footer */}
-        <div className="modal-footer" style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <button className="btn-secondary" onClick={handleCopyPayload} style={{ fontSize: '0.8rem' }}>
-            {copied ? <Check size={14} color="#16a34a" /> : <Copy size={14} />}
-            <span>{copied ? 'Copied Raw JSON' : 'Copy Payload JSON'}</span>
-          </button>
-
+        <div className="modal-footer" style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
           <button className="btn-primary" onClick={onClose}>
             Close Inspection
           </button>

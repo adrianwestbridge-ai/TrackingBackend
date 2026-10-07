@@ -16,7 +16,7 @@ export function exportSessionsToCSV(sessions, customFilename) {
     'Customer Name',
     'Email Address',
     'Mobile Number',
-    'Query Category',
+    'Quotation Source',
     'Traffic Source',
     'Ad Platform',
     'Landing Page',
@@ -25,7 +25,6 @@ export function exportSessionsToCSV(sessions, customFilename) {
     'OS',
     'Browser',
     'Captured Timestamp',
-    'Message Content',
   ];
 
   const csvRows = [];
@@ -38,7 +37,7 @@ export function exportSessionsToCSV(sessions, customFilename) {
       `"${(s.customerName || '').replace(/"/g, '""')}"`,
       `"${(s.customerEmail || '').replace(/"/g, '""')}"`,
       `"${(s.mobile || '').replace(/"/g, '""')}"`,
-      `"${(s.queryType || '').replace(/"/g, '""')}"`,
+      `"Click to Call"`,
       `"${(s.trafficSource || '').replace(/"/g, '""')}"`,
       `"${(s.adPlatform || '').replace(/"/g, '""')}"`,
       `"${(s.landingPage || '').replace(/"/g, '""')}"`,
@@ -47,7 +46,6 @@ export function exportSessionsToCSV(sessions, customFilename) {
       `"${(s.os || '').replace(/"/g, '""')}"`,
       `"${(s.browser || '').replace(/"/g, '""')}"`,
       `"${(s.timestamp || '').replace(/"/g, '""')}"`,
-      `"${(s.feedbackMessage || '').replace(/"/g, '""')}"`,
     ];
     csvRows.push(row.join(','));
   });
@@ -97,16 +95,28 @@ export function exportCallLogsToCSV(callLogs, customFilename) {
     return;
   }
 
-  const headers = ['Call ID', 'Caller Phone Number', 'Associated User ID', 'Duration', 'Traffic Source'];
+  const headers = [
+    'Call ID',
+    'Customer Name',
+    'Caller Phone Number',
+    'Session Reference',
+    'Call Duration',
+    'Traffic Channel',
+    'Timestamp',
+    'Audio Recording',
+  ];
   const csvRows = [headers.join(',')];
 
   callLogs.forEach((call) => {
     const row = [
       `"${(call.id || '').replace(/"/g, '""')}"`,
+      `"${(call.customerName || 'Unknown Caller').replace(/"/g, '""')}"`,
       `"${(call.caller || '').replace(/"/g, '""')}"`,
       `"${(call.userId || '').replace(/"/g, '""')}"`,
-      `"${(call.duration || '').replace(/"/g, '""')}"`,
+      `"${(call.duration || 'Not Recorded').toString().replace(/"/g, '""')}"`,
       `"${(call.source || '').replace(/"/g, '""')}"`,
+      `"${(call.timestamp || '').replace(/"/g, '""')}"`,
+      `"Recorded"`,
     ];
     csvRows.push(row.join(','));
   });

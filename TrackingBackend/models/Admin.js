@@ -28,6 +28,14 @@ const adminSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    // Optional white-label name shown in place of "Track Inbound" in this
+    // admin's own sidebar/login (e.g. "Zing Leads"). Falls back to the
+    // default brand when not set.
+    brandName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
   },
   {
     timestamps: true,
