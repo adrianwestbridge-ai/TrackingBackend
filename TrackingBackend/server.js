@@ -28,15 +28,32 @@ const path = require('path');
 // Which websites may call this API. Any localhost/127.0.0.1 dev server, on any
 // port, is always allowed - that's a developer's own machine, so a new local
 // test site never needs a backend code change to work with `npm run dev`.
-// A real production domain (this site or a future one) is added via the
-// ALLOWED_ORIGINS env var - a comma-separated list - so onboarding a new
-// production website never needs a code change or redeploy either, just
-// updating that one env var on the host.
+//
+// Live production domains are baked in below so a fresh deploy allows them
+// immediately, with no dependency on manually setting an env var on the host.
+// The ALLOWED_ORIGINS env var still works too, as a comma-separated list, for
+// adding further domains later without another code change/redeploy.
 const LOCAL_ORIGIN_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/;
-const EXTRA_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
-  .split(',')
-  .map((o) => o.trim())
-  .filter(Boolean);
+const DEFAULT_PRODUCTION_ORIGINS = [
+  'https://trackinbound.com',
+  'https://www.trackinbound.com',
+  'https://drivecoveragenow.com',
+  'https://www.drivecoveragenow.com',
+  'https://homeinsureusa.com',
+  'https://www.homeinsureusa.com',
+  'https://homepolicyassist.com',
+  'https://www.homepolicyassist.com',
+  'https://pesthelpcenter.com',
+  'https://www.pesthelpcenter.com',
+  'https://finalexpquotes.com',
+  'https://www.finalexpquotes.com',
+  'https://usacontrolpest.com',
+  'https://www.usacontrolpest.com',
+];
+const EXTRA_ORIGINS = [
+  ...DEFAULT_PRODUCTION_ORIGINS,
+  ...(process.env.ALLOWED_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean),
+];
 
 // Middleware
 app.use(cors({
