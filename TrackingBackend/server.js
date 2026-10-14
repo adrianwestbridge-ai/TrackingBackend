@@ -25,15 +25,10 @@ const app = express();
 
 const path = require('path');
 
-// Which websites may call this API. Any localhost/127.0.0.1 dev server, on any
-// port, is always allowed - that's a developer's own machine, so a new local
-// test site never needs a backend code change to work with `npm run dev`.
-//
-// Live production domains are baked in below so a fresh deploy allows them
-// immediately, with no dependency on manually setting an env var on the host.
-// The ALLOWED_ORIGINS env var still works too, as a comma-separated list, for
-// adding further domains later without another code change/redeploy.
-const LOCAL_ORIGIN_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/;
+// Which websites may call this API. Only the live production domains listed
+// below (plus anything added via ALLOWED_ORIGINS) are allowed - localhost/dev
+// servers are deliberately NOT allowed anymore, so only real production
+// traffic reaches this API.
 const DEFAULT_PRODUCTION_ORIGINS = [
   'https://trackinbound.com',
   'https://www.trackinbound.com',
@@ -59,7 +54,7 @@ const EXTRA_ORIGINS = [
 app.use(cors({
   origin(origin, callback) {
     // No Origin header (server-to-server calls, curl, Postman) is always allowed.
-    if (!origin || LOCAL_ORIGIN_PATTERN.test(origin) || EXTRA_ORIGINS.includes(origin)) {
+    if (!origin || EXTRA_ORIGINS.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error(`Not allowed by CORS: ${origin}`));
