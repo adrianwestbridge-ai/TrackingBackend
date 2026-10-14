@@ -177,6 +177,51 @@ const listAdmins = async (req, res, next) => {
   }
 };
 
+// @desc    Update a scoped admin's website access and/or brand name
+// @route   PATCH /api/auth/admins/:id
+// @access  Super admin only
+const updateAdmin = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { allowedOrigins, brandName } = req.body;
+
+    if (!Array.isArray(allowedOrigins) || allowedOrigins.length === 0) {
+      return res.status(400).json({ success: false, message: 'Select at least one website this admin may access' });
+    }
+    const trimmedBrandName = brandName !== undefined ? brandName.trim() : undefined;
+
+    if (isDbConnected()) {
+      try {
+        const target = await Admin.findById(id);
+        if (target) {
+          if (target.role === 'superadmin') {
+            return res.status(400).json({ success: false, message: 'Cannot edit a super admin' });
+          }
+          target.allowedOrigins = allowedOrigins;
+          if (trimmedBrandName !== undefined) target.brandName = trimmedBrandName;
+          await target.save();
+          return res.status(200).json({ success: true, data: publicAdmin(target) });
+        }
+      } catch (err) {
+        console.warn('[Auth] MongoDB update failed, checking in-memory:', err.message);
+      }
+    }
+
+    const idx = inMemoryAdmins.findIndex((a) => a.id === id);
+    if (idx === -1) {
+      return res.status(404).json({ success: false, message: 'Admin not found' });
+    }
+    if (inMemoryAdmins[idx].role === 'superadmin') {
+      return res.status(400).json({ success: false, message: 'Cannot edit a super admin' });
+    }
+    inMemoryAdmins[idx].allowedOrigins = allowedOrigins;
+    if (trimmedBrandName !== undefined) inMemoryAdmins[idx].brandName = trimmedBrandName;
+    return res.status(200).json({ success: true, data: publicAdmin(inMemoryAdmins[idx]) });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Delete a scoped admin (never a super admin)
 // @route   DELETE /api/auth/admins/:id
 // @access  Super admin only
@@ -218,5 +263,6 @@ module.exports = {
   login,
   createAdmin,
   listAdmins,
+  updateAdmin,
   deleteAdmin,
 };
