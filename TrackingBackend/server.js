@@ -25,10 +25,14 @@ const app = express();
 
 const path = require('path');
 
-// Which websites may call this API. Only the live production domains listed
-// below (plus anything added via ALLOWED_ORIGINS) are allowed - localhost/dev
-// servers are deliberately NOT allowed anymore, so only real production
-// traffic reaches this API.
+// Which websites may call this API. Only the live production demo-site
+// domains listed below (plus anything added via ALLOWED_ORIGINS) may submit
+// form/session data - local dev copies of those demo sites are deliberately
+// NOT allowed, so no test data from a developer's machine can land in
+// production. localhost:5174 is the one exception: that's the dashboard
+// itself, the admin tool used to manage this data, not a form-submitting
+// site, so it stays allowed regardless of where it's run from.
+const DASHBOARD_ORIGIN = 'http://localhost:5174';
 const DEFAULT_PRODUCTION_ORIGINS = [
   'https://trackinbound.com',
   'https://www.trackinbound.com',
@@ -44,6 +48,7 @@ const DEFAULT_PRODUCTION_ORIGINS = [
   'https://www.finalexpquotes.com',
   'https://usacontrolpest.com',
   'https://www.usacontrolpest.com',
+  DASHBOARD_ORIGIN,
 ];
 const EXTRA_ORIGINS = [
   ...DEFAULT_PRODUCTION_ORIGINS,
