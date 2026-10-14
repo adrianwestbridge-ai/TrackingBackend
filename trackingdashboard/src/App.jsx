@@ -29,6 +29,22 @@ const PLATFORMS = [
 ];
 const pickRandomPlatform = () => PLATFORMS[Math.floor(Math.random() * PLATFORMS.length)];
 
+// Every live production demo site - kept in sync by hand with
+// TrackingBackend/server.js's DEFAULT_PRODUCTION_ORIGINS. Always shown in the
+// website filter and in "Manage Admins" website checkboxes, even before any
+// real session data exists for them - a super admin needs to be able to
+// grant a new admin access to a site on day one, not only after it has
+// already received traffic.
+const KNOWN_PRODUCTION_SITES = [
+  'https://trackinbound.com',
+  'https://drivecoveragenow.com',
+  'https://homeinsureusa.com',
+  'https://homepolicyassist.com',
+  'https://pesthelpcenter.com',
+  'https://finalexpquotes.com',
+  'https://usacontrolpest.com',
+];
+
 // Given a landingPage URL, return the value used to group/filter by website:
 // its origin (protocol + host) when parseable, or the raw string otherwise.
 const siteOriginOf = (landingPage) => {
@@ -118,12 +134,15 @@ export default function App() {
       return options;
     }
 
-    const uniqueSites = Object.keys(counts);
+    // Union of every known production site (always present) and any other
+    // origin that has actually sent data (covers a site not yet added to
+    // KNOWN_PRODUCTION_SITES above).
+    const uniqueSites = Array.from(new Set([...KNOWN_PRODUCTION_SITES, ...Object.keys(counts)]));
     return [
       { value: 'All', label: `All Websites (${uniqueSites.length} ${uniqueSites.length === 1 ? 'website' : 'websites'})` },
       ...uniqueSites.map((site) => ({
         value: site,
-        label: `${site} (${counts[site]} ${counts[site] === 1 ? 'entry' : 'entries'})`,
+        label: `${site} (${counts[site] || 0} ${counts[site] === 1 ? 'entry' : 'entries'})`,
       })),
     ];
   }, [sessions, isSuperAdmin, currentUser]);
@@ -179,6 +198,8 @@ export default function App() {
             mobile: item.mobile || metadata.fullMobileNumber || 'Not Provided',
             customerName: metadata.customerName || 'Anonymous Visitor',
             customerEmail: metadata.customerEmail || 'No Email Provided',
+            zipCode: metadata.zipCode || metadata.zip || 'Not Provided',
+            state: metadata.state || 'Not Provided',
             queryType: metadata.queryType || metadata.category || 'General Inquiry',
             feedbackMessage: metadata.feedbackMessage || 'No text message body',
             rating: metadata.rating || null,
@@ -267,7 +288,7 @@ export default function App() {
   return (
     <div className="app-container">
       {/* Sidebar Navigation */}
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} brandName={currentUser?.brandName} />
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} brandName={currentUser?.brandName} username={currentUser?.username} isSuperAdmin={isSuperAdmin} />
 
       {/* Main Content Workspace */}
       <div className="main-content">
@@ -400,6 +421,7 @@ export default function App() {
           knownWebsites={websiteOptions.filter((o) => o.value !== 'All').map((o) => o.value)}
           existingAdmins={admins}
           onAdminCreated={(admin) => setAdmins((prev) => [...prev, admin])}
+          onAdminUpdated={(admin) => setAdmins((prev) => prev.map((a) => (a.id === admin.id ? admin : a)))}
           onAdminDeleted={(id) => setAdmins((prev) => prev.filter((a) => a.id !== id))}
         />
       )}

@@ -69,6 +69,16 @@ export default function SessionModal({ session, onClose }) {
                   Click to Call
                 </span>
               </div>
+
+              <div>
+                <span style={{ fontSize: '0.78rem', color: '#64748b', display: 'block', fontWeight: 500 }}>Zip Code</span>
+                <strong style={{ fontSize: '0.95rem', color: '#0f172a', fontFamily: 'monospace' }}>{session.zipCode}</strong>
+              </div>
+
+              <div>
+                <span style={{ fontSize: '0.78rem', color: '#64748b', display: 'block', fontWeight: 500 }}>State</span>
+                <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>{session.state}</strong>
+              </div>
             </div>
           </div>
 

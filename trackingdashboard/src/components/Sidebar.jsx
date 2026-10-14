@@ -18,8 +18,17 @@ const navItems = [
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
 ];
 
-export default function Sidebar({ activeTab, setActiveTab, brandName }) {
-  const displayName = (brandName || '').trim() || 'TRACK INBOUND';
+// "zing leads" -> "Zing Leads" - every admin sees their own name standardized
+// to Title Case, never raw lowercase and never shouted in all-caps.
+const toTitleCase = (str) => str.replace(/\b\w/g, (c) => c.toUpperCase());
+
+export default function Sidebar({ activeTab, setActiveTab, brandName, username, isSuperAdmin }) {
+  // Super Admin keeps the default Track Inbound branding - only scoped
+  // (white-label) admins fall back to their own username when no custom
+  // brand name is set.
+  const usernameFallback = !isSuperAdmin ? (username || '').trim() : '';
+  const rawName = (brandName || '').trim() || usernameFallback || 'Track Inbound';
+  const displayName = toTitleCase(rawName);
 
   return (
     <aside className="sidebar">
@@ -27,7 +36,7 @@ export default function Sidebar({ activeTab, setActiveTab, brandName }) {
         <h1 className="sidebar-title">
           <img src="/logo.png" alt={displayName} className="logo-icon" />
           <span className="sidebar-title-text">
-            <span className="brand-name">{displayName.toUpperCase()}</span>
+            <span className="brand-name">{displayName}</span>
             <span className="brand-subtitle">Inbound Tracking System</span>
           </span>
         </h1>

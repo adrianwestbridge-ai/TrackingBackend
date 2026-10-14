@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { RefreshCw, Plus, Globe, UserPlus, LogOut, ShieldCheck, User } from 'lucide-react';
+import { RefreshCw, Plus, Globe, Users, LogOut, ShieldCheck, User } from 'lucide-react';
 
 export default function Header({
   pageTitle,
@@ -177,7 +177,7 @@ export default function Header({
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
-                  <UserPlus size={15} color="#2563eb" /> Create Admin
+                  <Users size={15} color="#15803d" /> Manage Admins
                 </button>
               )}
 
