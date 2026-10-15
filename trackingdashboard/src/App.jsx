@@ -29,22 +29,6 @@ const PLATFORMS = [
 ];
 const pickRandomPlatform = () => PLATFORMS[Math.floor(Math.random() * PLATFORMS.length)];
 
-// Every live production demo site - kept in sync by hand with
-// TrackingBackend/server.js's DEFAULT_PRODUCTION_ORIGINS. Always shown in the
-// website filter and in "Manage Admins" website checkboxes, even before any
-// real session data exists for them - a super admin needs to be able to
-// grant a new admin access to a site on day one, not only after it has
-// already received traffic.
-const KNOWN_PRODUCTION_SITES = [
-  'https://trackinbound.com',
-  'https://drivecoveragenow.com',
-  'https://homeinsureusa.com',
-  'https://homepolicyassist.com',
-  'https://pesthelpcenter.com',
-  'https://finalexpquotes.com',
-  'https://usacontrolpest.com',
-];
-
 // Given a landingPage URL, return the value used to group/filter by website:
 // its origin (protocol + host) when parseable, or the raw string otherwise.
 const siteOriginOf = (landingPage) => {
@@ -82,6 +66,7 @@ export default function App() {
   const [{ token: authToken, user: currentUser }, setAuth] = useState(loadStoredAuth);
   const [isCreateAdminOpen, setIsCreateAdminOpen] = useState(false);
   const [admins, setAdmins] = useState([]);
+  const [knownSites, setKnownSites] = useState([]);
 
   const isSuperAdmin = currentUser?.role === 'superadmin';
 
@@ -134,10 +119,16 @@ export default function App() {
       return options;
     }
 
-    // Union of every known production site (always present) and any other
+    // Union of every known production site (fetched live from the backend's
+    // config/productionSites.js via GET /api/auth/sites - this is the single
+    // source of truth, kept in sync automatically with the CORS allow-list),
+    // any custom origin a super admin has ever granted to an admin (so a
+    // one-off URL typed in "Manage Admins" becomes a known site for every
+    // future admin, not just the one it was first added for), and any other
     // origin that has actually sent data (covers a site not yet added to
-    // KNOWN_PRODUCTION_SITES above).
-    const uniqueSites = Array.from(new Set([...KNOWN_PRODUCTION_SITES, ...Object.keys(counts)]));
+    // either list above).
+    const adminOrigins = admins.flatMap((a) => a.allowedOrigins || []);
+    const uniqueSites = Array.from(new Set([...knownSites, ...adminOrigins, ...Object.keys(counts)]));
     return [
       { value: 'All', label: `All Websites (${uniqueSites.length} ${uniqueSites.length === 1 ? 'website' : 'websites'})` },
       ...uniqueSites.map((site) => ({
@@ -145,7 +136,7 @@ export default function App() {
         label: `${site} (${counts[site] || 0} ${counts[site] === 1 ? 'entry' : 'entries'})`,
       })),
     ];
-  }, [sessions, isSuperAdmin, currentUser]);
+  }, [sessions, isSuperAdmin, currentUser, admins, knownSites]);
 
   // The data every tab actually renders - narrowed to the selected website.
   // Note: for a scoped admin, `sessions` itself already only ever contains
@@ -244,8 +235,38 @@ export default function App() {
     }
   };
 
+  // Every known production site, sourced live from the backend's
+  // config/productionSites.js (single source of truth - see server.js's
+  // CORS allow-list). A site added there shows up here with no dashboard
+  // code change or redeploy needed.
+  const fetchKnownSites = async () => {
+    if (!isSuperAdmin || !authToken) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/sites`, { headers: authHeaders });
+      const data = await res.json();
+      if (data.success) setKnownSites(data.data);
+    } catch (err) {
+      // Non-critical - the website list just falls back to admin-granted/session-derived origins.
+    }
+  };
+
+  // Fetched as soon as a super admin logs in - not only when "Manage Admins"
+  // is opened - so a custom website URL ever granted to any admin shows up
+  // in the main website filter dropdown right away, not just inside that
+  // modal. Also refetched whenever the modal opens, to pick up anything
+  // changed since the last poll.
   useEffect(() => {
-    if (isCreateAdminOpen) fetchAdmins();
+    if (authToken && isSuperAdmin) {
+      fetchAdmins();
+      fetchKnownSites();
+    }
+  }, [authToken, isSuperAdmin]);
+
+  useEffect(() => {
+    if (isCreateAdminOpen) {
+      fetchAdmins();
+      fetchKnownSites();
+    }
   }, [isCreateAdminOpen]);
 
   const showNotification = (msg) => {

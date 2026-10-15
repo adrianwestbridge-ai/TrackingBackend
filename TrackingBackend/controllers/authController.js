@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const Admin = require('../models/Admin');
 const { JWT_SECRET } = require('../middleware/auth');
+const { PRODUCTION_SITES } = require('../config/productionSites');
 
 const isDbConnected = () => mongoose.connection.readyState === 1;
 
@@ -158,6 +159,27 @@ const createAdmin = async (req, res, next) => {
   }
 };
 
+// @desc    List every known production site origin, so the dashboard's
+//         website filter and "Manage Admins" checkboxes always match
+//         whatever is actually CORS-allowed in server.js - adding a site to
+//         config/productionSites.js (or the ALLOWED_ORIGINS env var) is the
+//         only edit needed; the dashboard picks it up with no redeploy.
+// @route   GET /api/auth/sites
+// @access  Any authenticated admin
+const getKnownSites = async (req, res, next) => {
+  try {
+    const envSites = (process.env.ALLOWED_ORIGINS || '')
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean)
+      .map((o) => o.replace(/^https:\/\/www\./, 'https://'));
+    const sites = Array.from(new Set([...PRODUCTION_SITES, ...envSites]));
+    return res.status(200).json({ success: true, data: sites });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    List all admins (so the Create Admin screen can show who exists)
 // @route   GET /api/auth/admins
 // @access  Super admin only
@@ -265,4 +287,5 @@ module.exports = {
   listAdmins,
   updateAdmin,
   deleteAdmin,
+  getKnownSites,
 };
