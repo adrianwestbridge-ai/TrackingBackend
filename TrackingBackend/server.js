@@ -23,6 +23,14 @@ connectDB().then(() => {
 
 const app = express();
 
+// Trust the X-Forwarded-* headers from whatever reverse proxy sits in front
+// (Nginx on a self-managed VM, Render's own proxy, etc.), so req.protocol
+// reports "https" correctly when the proxy terminates TLS over plain HTTP to
+// this process - without this, uploadRoutes.js's recording URLs would come
+// back as http:// behind a proxy that doesn't already set this itself,
+// which a dashboard loaded over https would then block as mixed content.
+app.set('trust proxy', 1);
+
 const path = require('path');
 
 // Which websites may call this API. Only the live production demo-site
